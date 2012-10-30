@@ -8,10 +8,11 @@ use Git::Repository::Command;
 use Cwd 'chdir';
 use File::Find::Rule;
 use File::Slurp;
+use File::Grep qw( fgrep fmap fdo );
  
 my $REPO_VER='4.2';
 my $SCRIPT_PATH = abs_path();
-my $REPO_DIR = "$SCRIPT_PATH/repositories";
+my $REPO_DIR = "$SCRIPT_PATH/repositories/";
 my @REPOSITORIES = ('xwiki-commons', 'xwiki-platform', 'xwiki-rendering');
 
 # Creates a directory with the parameter name
@@ -41,21 +42,34 @@ foreach my $repo (@REPOSITORIES) {
 		clone_repo($repo);
 	} else {
 		# Change dir and do a checkout with that tag (assume the sources are there)
+		# TODO: make sure you update first the repo
 		chdir "$REPO_DIR/$repo";
 		Git::Repository->run( checkout => "$repo-$REPO_VER", { quiet => 1 } );	
 	}
 }
 
-# Create a hashmap and add all the velocity bindings
-sub get_velocity_bindings {
+# Returns all files with a *.java extension
+sub get_all_java_files {
 	my @files = File::Find::Rule->file()
                               ->name( '*.java' )
-                              ->in( $REPO_DIR );
-    for my $file (@files) {
-		print "$file\n";
-	}	                        
+                              ->in( $REPO_DIR );	
+        return @files;
 }
 
-#get_velocity_bindings;
+# Allows you to enter a pattern and searches all java files for that pattern. Return an array containing the found files
+sub search_pattern_in_file {
+	my $pattern = shift;
+	my @found_files;
+	for my $file (get_all_java_files()) {
+		if (fgrep {/$pattern/} $file) 
+		{
+			push (@found_files, $file);
+		}
+	}
+	return @found_files;
+}
 
-
+my @bindings = search_pattern_in_file("implements.*ScriptContextInitializer");
+for my $file (@bindings) {
+	print "$file\n";
+}
