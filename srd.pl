@@ -9,11 +9,12 @@ use Cwd 'chdir';
 use File::Find::Rule;
 use File::Slurp;
 use File::Grep qw( fgrep fmap fdo );
+use LWP::Simple;
  
-my $REPO_VER='4.2';
+my $REPO_VER='4.3';
 my $SCRIPT_PATH = abs_path();
 my $REPO_DIR = "$SCRIPT_PATH/repositories/";
-my @REPOSITORIES = ('xwiki-commons', 'xwiki-platform', 'xwiki-rendering');
+my @REPOSITORIES = ('xwiki-commons', 'xwiki-platform', 'xwiki-rendering', 'xwiki-enterprise', 'xwiki-manager');
 
 # Creates a directory with the parameter name
 sub create_dir {
@@ -69,7 +70,71 @@ sub search_pattern_in_file {
 	return @found_files;
 }
 
-my @bindings = search_pattern_in_file("implements.*ScriptContextInitializer");
-for my $file (@bindings) {
-	print "$file\n";
+# lists the available bindings
+sub  list_bindings {
+	my @bindings_found_files = search_pattern_in_file("implements.*ScriptContextInitializer");
+	for my $file (@bindings_found_files) {
+		open(R_FILE,"<$file") or die $!;
+		while (my $line = <R_FILE>) {
+			if ($line =~ /setAttribute/) {
+				if ($line =~ /"(.+?)"/) {				
+					print '$' . "$1 $file\n";
+				}
+			}
+		}
+		close R_FILE;
+	}		 
 }
+
+# lists all the available velocity tools
+sub list_velocity_tools {
+	 my @velocity_tools_found_files = search_pattern_in_file("implements.*VelocityConfiguration");
+	 for my $file (@velocity_tools_found_files) {
+		open(R_FILE,"<$file") or die $!;
+		while (my $line = <R_FILE>) {
+			if ($line =~ /defaultTools.setProperty/) {
+				if ($line =~ /"(.+?)"/) {				
+					print '$' . "$1 $file\n";
+				}
+			}
+		}
+		close R_FILE;
+	 }
+}
+
+# lists all available plugins
+sub list_plugins {
+	 my @plugins_found_files = search_pattern_in_file("implements.*VelocityContextInitializer");
+	 	for my $file (@plugins_found_files) {
+		open(R_FILE,"<$file") or die $!;
+		while (my $line = <R_FILE>) {
+			if ($line =~ /public static final String VELOCITY_CONTEXT_KEY/) {
+				if ($line =~ /"(.+?)"/) {				
+					print '$' . "$1 $file\n";
+				}
+			}
+		}
+		close R_FILE;
+	 }
+}
+
+# lists all available services
+sub list_services {
+	 my @plugins_found_files = search_pattern_in_file("implements.*ScriptService");
+	 	for my $file (@plugins_found_files) {
+		open(R_FILE,"<$file") or die $!;
+		while (my $line = <R_FILE>) {
+			if ($line =~ /\@Named/) {
+				if ($line =~ /"(.+?)"/) {				
+					print '$' . "$1 $file\n";
+				}
+			}
+		}
+		close R_FILE;
+	 }
+}
+
+list_bindings();
+list_velocity_tools();
+list_plugins();
+list_services();
